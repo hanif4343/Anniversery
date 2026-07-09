@@ -66,7 +66,7 @@ jobs:
         run: |
           sed -i 's/android:label="love_journey"/android:label="Love Journey"/' android/app/src/main/AndroidManifest.xml
 
-      - name: Raise compileSdk/targetSdk (some plugins require 34+)
+      - name: Raise compileSdk/targetSdk (some plugins require higher API levels)
         run: |
           python3 - <<'PYEOF'
           import re, os
@@ -82,22 +82,34 @@ jobs:
           with open(path, "r") as f:
               content = f.read()
 
+          # Using 36 (the latest stable Android API level as of this fix).
+          # If a future package needs even higher, this number is the one
+          # place to bump - search this file for "compileSdk" if the error
+          # ever mentions a higher number again.
+          SDK = "36"
+
           if path.endswith(".kts"):
-              # Kotlin DSL: compileSdk = flutter.compileSdkVersion
               content = re.sub(r"compileSdk\s*=\s*flutter\.compileSdkVersion",
-                                "compileSdk = 35", content)
+                                f"compileSdk = {SDK}", content)
+              content = re.sub(r"compileSdk\s*=\s*\d+",
+                                f"compileSdk = {SDK}", content)
               content = re.sub(r"targetSdk\s*=\s*flutter\.targetSdkVersion",
-                                "targetSdk = 35", content)
+                                f"targetSdk = {SDK}", content)
+              content = re.sub(r"targetSdk\s*=\s*\d+",
+                                f"targetSdk = {SDK}", content)
           else:
-              # Groovy DSL: compileSdkVersion flutter.compileSdkVersion
               content = re.sub(r"compileSdkVersion\s+flutter\.compileSdkVersion",
-                                "compileSdkVersion 35", content)
+                                f"compileSdkVersion {SDK}", content)
+              content = re.sub(r"compileSdkVersion\s+\d+",
+                                f"compileSdkVersion {SDK}", content)
               content = re.sub(r"targetSdkVersion\s+flutter\.targetSdkVersion",
-                                "targetSdkVersion 35", content)
+                                f"targetSdkVersion {SDK}", content)
+              content = re.sub(r"targetSdkVersion\s+\d+",
+                                f"targetSdkVersion {SDK}", content)
 
           with open(path, "w") as f:
               f.write(content)
-          print(f"Patched {path} to compileSdk/targetSdk 35")
+          print(f"Patched {path} to compileSdk/targetSdk {SDK}")
           PYEOF
 
       - name: Generate Hive adapters
