@@ -66,6 +66,40 @@ jobs:
         run: |
           sed -i 's/android:label="love_journey"/android:label="Love Journey"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Raise compileSdk/targetSdk (some plugins require 34+)
+        run: |
+          python3 - <<'PYEOF'
+          import re, os
+
+          candidates = [
+              "android/app/build.gradle.kts",
+              "android/app/build.gradle",
+          ]
+          path = next((p for p in candidates if os.path.exists(p)), None)
+          if path is None:
+              raise SystemExit("No build.gradle(.kts) file found!")
+
+          with open(path, "r") as f:
+              content = f.read()
+
+          if path.endswith(".kts"):
+              # Kotlin DSL: compileSdk = flutter.compileSdkVersion
+              content = re.sub(r"compileSdk\s*=\s*flutter\.compileSdkVersion",
+                                "compileSdk = 35", content)
+              content = re.sub(r"targetSdk\s*=\s*flutter\.targetSdkVersion",
+                                "targetSdk = 35", content)
+          else:
+              # Groovy DSL: compileSdkVersion flutter.compileSdkVersion
+              content = re.sub(r"compileSdkVersion\s+flutter\.compileSdkVersion",
+                                "compileSdkVersion 35", content)
+              content = re.sub(r"targetSdkVersion\s+flutter\.targetSdkVersion",
+                                "targetSdkVersion 35", content)
+
+          with open(path, "w") as f:
+              f.write(content)
+          print(f"Patched {path} to compileSdk/targetSdk 35")
+          PYEOF
+
       - name: Generate Hive adapters
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
